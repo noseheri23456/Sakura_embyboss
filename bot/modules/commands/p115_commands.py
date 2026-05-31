@@ -89,9 +89,9 @@ def _check_user_permission(user_id: int) -> bool:
 
 # --- 用户命令 ---
 
-@bot.on_message(filters.regex(r"(magnet:\?xt=urn:btih:[a-zA-Z0-9]+.*)") & filters.private)
-async def handle_magnet(_, msg):
-    """自动检测磁力链接"""
+@bot.on_message(filters.regex(r"(magnet:\?xt=urn:btih:[a-zA-Z0-9]+.*|https?://(?:[a-zA-Z0-9-]+\.)?115(?:cdn)?\.com/[^\s]+)") & filters.private)
+async def handle_download_link(_, msg):
+    """自动检测磁力链接和 115 分享链接"""
     if not _check_p115_enabled():
         return
 
@@ -118,24 +118,34 @@ async def handle_magnet(_, msg):
                                f"你可以使用 /p115_buy 购买更多配额，或联系管理员。")
         return
 
-    magnet_url = msg.text.strip()
+    source_url = msg.text.strip()
+    is_share = not source_url.lower().startswith("magnet:")
 
-    # 检查 115 离线配额
-    quota = await _p115.get_offline_quota()
-    if quota is not None and quota['remaining'] <= 0:
-        await sendMessage(msg,
-            f"❌ 115 离线下载配额已用完（{quota['used']}/{quota['total']}）\n"
-            f"请等待下月重置或联系管理员。"
-        )
-        return
+    # 检查 115 离线配额 (分享链接不需要离线配额)
+    if not is_share:
+        quota = await _p115.get_offline_quota()
+        if quota is not None and quota['remaining'] <= 0:
+            await sendMessage(msg,
+                f"❌ 115 离线下载配额已用完（{quota['used']}/{quota['total']}）\n"
+                f"请等待下月重置或联系管理员。"
+            )
+            return
 
     # 115 提交重试逻辑 (3次)
     info_hash = None
+    share_folder_name = None
+    task_name = "解析中..."
     last_error = ""
     for attempt in range(3):
         try:
-            resp = await _p115.add_offline_task(magnet_url)
-            info_hash = resp.get("info_hash")
+            if is_share:
+                resp = await _p115.add_share_task(source_url)
+                task_name = resp.get("name")
+                share_folder_name = resp.get("folder_name")
+                info_hash = f"share_{share_folder_name}"
+            else:
+                resp = await _p115.add_offline_task(source_url)
+                info_hash = resp.get("info_hash")
             break
         except Exception as e:
             last_error = str(e)
@@ -147,13 +157,30 @@ async def handle_magnet(_, msg):
         return
 
     try:
-        reply = await msg.reply("✅ 任务已提交至 115！\n正在解析并排队中...")
-        task_id = await _db.add_task(
-            user_id=user_id,
-            source_url=magnet_url,
-            task_name="解析中...",
-        )
-        await _db.update_task(task_id, task_hash=info_hash, status='DOWNLOADING_115', msg_id=reply.id)
+        if is_share:
+            reply = await msg.reply("✅ 分享链接已成功转存至 115！\n正在准备下载至 VPS...")
+            task_id = await _db.add_task(
+                user_id=user_id,
+                source_url=source_url,
+                task_name=task_name,
+            )
+            await _db.update_task(task_id, task_hash=info_hash, status='WAITING_LOCAL_TRANSFER', msg_id=reply.id)
+            
+            # 立即获取文件列表并入库
+            files = await _p115.get_task_files(info_hash, share_folder_name)
+            if files:
+                await _db.add_task_files_batch(task_id, files)
+            else:
+                await _db.update_task(task_id, status='FAILED', error_msg="转存成功但未找到文件")
+                await bot.edit_message_text(msg.chat.id, reply.id, "❌ 转存成功但未找到文件")
+        else:
+            reply = await msg.reply("✅ 任务已提交至 115！\n正在解析并排队中...")
+            task_id = await _db.add_task(
+                user_id=user_id,
+                source_url=source_url,
+                task_name="解析中...",
+            )
+            await _db.update_task(task_id, task_hash=info_hash, status='DOWNLOADING_115', msg_id=reply.id)
     except Exception as e:
         await sendMessage(msg, f"❌ 数据库记录失败: {e}")
 

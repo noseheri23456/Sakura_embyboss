@@ -144,6 +144,69 @@ class P115Manager:
         logger.error(f"离线任务添加失败，原始响应: {resp}")
         raise Exception(f"115 离线任务添加失败: {error_msg}")
 
+    async def add_share_task(self, url: str) -> dict:
+        """添加 115 分享链接转存任务"""
+        from p115client.tool import share_extract_payload
+        client = await self._get_client()
+
+        try:
+            payload = share_extract_payload(url)
+            share_code = payload.get("share_code")
+            receive_code = payload.get("receive_code", "")
+        except Exception as e:
+            logger.error(f"提取分享链接失败: {e}")
+            raise Exception("无法解析 115 分享链接，格式可能不正确")
+
+        # 1. 获取分享快照
+        snap_resp = await client.share_snap({"share_code": share_code, "receive_code": receive_code}, async_=True)
+        if not isinstance(snap_resp, dict) or not snap_resp.get("state"):
+            error_msg = snap_resp.get("error", snap_resp.get("message", "未知错误")) if isinstance(snap_resp, dict) else "未知错误"
+            raise Exception(f"获取分享详情失败: {error_msg}")
+
+        data = snap_resp.get("data", {})
+        file_list = data.get("list", [])
+        if not file_list:
+            raise Exception("该分享链接为空")
+
+        # 收集文件ID
+        file_ids = [str(f.get("file_id") or f.get("id")) for f in file_list if f.get("file_id") or f.get("id")]
+        if not file_ids:
+            raise Exception("无法从分享链接中提取有效文件 ID")
+
+        # 确定任务名称
+        task_name = file_list[0].get("name", "未命名分享")
+        if len(file_list) > 1:
+            task_name += f" 等{len(file_list)}个文件"
+
+        # 2. 在根目录创建一个专属的接收文件夹，避免散落
+        import time
+        folder_name = f"{task_name}_{int(time.time())}"
+        mkdir_resp = await client.fs_mkdir({"cname": folder_name}, pid=0, async_=True)
+        if not isinstance(mkdir_resp, dict) or not mkdir_resp.get("state"):
+            error_msg = mkdir_resp.get("error", mkdir_resp.get("message", "未知错误")) if isinstance(mkdir_resp, dict) else "未知错误"
+            raise Exception(f"创建转存目录失败: {error_msg}")
+
+        target_cid = mkdir_resp.get("cid") or mkdir_resp.get("file_id") or mkdir_resp.get("id")
+        if not target_cid:
+            target_cid = mkdir_resp.get("data", {}).get("cid") or mkdir_resp.get("data", {}).get("file_id")
+
+        if not target_cid:
+            raise Exception(f"创建转存目录成功，但无法获取其目录 ID: {mkdir_resp}")
+
+        # 3. 执行转存
+        receive_payload = {
+            "share_code": share_code,
+            "receive_code": receive_code,
+            "file_id": ",".join(file_ids),
+            "cid": target_cid
+        }
+        receive_resp = await client.share_receive(receive_payload, async_=True)
+        if not isinstance(receive_resp, dict) or not receive_resp.get("state"):
+            error_msg = receive_resp.get("error", receive_resp.get("message", "未知错误")) if isinstance(receive_resp, dict) else "未知错误"
+            raise Exception(f"转存分享失败: {error_msg}")
+
+        return {"name": task_name, "folder_name": folder_name, "is_share": True}
+
     async def get_offline_list(self) -> list[dict]:
         """获取 115 离线任务列表（一次调用，多次复用）"""
         client = await self._get_client()
