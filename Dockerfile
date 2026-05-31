@@ -2,7 +2,7 @@
 FROM python:3.10.11-alpine AS builder
 
 # 安装必要的构建依赖
-RUN apk add --no-cache --virtual .build-deps gcc musl-dev openssl-dev coreutils
+RUN apk add --no-cache --virtual .build-deps gcc musl-dev openssl-dev coreutils git
 COPY requirements.txt .
 # 安装 Python 包
 RUN pip install --no-cache-dir -r requirements.txt
