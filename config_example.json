@@ -120,5 +120,19 @@
     "allow_origins": [
       "*"
     ]
+  },
+  "p115": {
+    "status": false,
+    "rclone_remote": "GDriveRemote",
+    "rclone_target_path": "/115_bot",
+    "emby_media_path": "/media/google/115_bot",
+    "max_pending_tasks": 5,
+    "max_total_tasks": 50,
+    "max_file_size_gb": 50,
+    "stall_timeout_minutes": 30,
+    "allowed_lv": ["a", "b"],
+    "allow_buy": true,
+    "task_price": 10,
+    "tasks_per_purchase": 5
   }
 }

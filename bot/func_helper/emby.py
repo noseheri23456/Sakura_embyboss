@@ -586,27 +586,29 @@ class Embyservice(metaclass=Singleton):
             enable_all_folders=False
         )
 
-    @cache.memoize(ttl=120)
-    async def get_current_playing_count(self) -> int:
+    @cache.memoize(ttl=30)
+    async def get_current_playing_details(self) -> list:
         """
-        获取当前播放用户数量
-        :return: 播放用户数量
+        获取当前正在播放的详细信息
+        :return: [{'username': str, 'title': str}, ...]
         """
         try:
             result = await self._request('GET', '/emby/Sessions')
+            details = []
             if result.success and result.data:
-                count = 0
                 for session in result.data:
-                    if session.get("NowPlayingItem"):
-                        count += 1
-                LOGGER.debug(f"当前播放用户数: {count}")
-                return count
-            else:
-                LOGGER.error(f"获取播放数量失败: {result.error}")
-                return -1
+                    item = session.get("NowPlayingItem")
+                    if item:
+                        username = session.get("UserName", "Unknown")
+                        title = item.get("Name", "Unknown")
+                        series_name = item.get("SeriesName")
+                        if series_name:
+                            title = f"{series_name} - {title}"
+                        details.append({"username": username, "title": title})
+            return details
         except Exception as e:
-            LOGGER.error(f"获取播放数量异常: {str(e)}")
-            return -1
+            LOGGER.error(f"获取播放详情异常: {str(e)}")
+            return []
 
     async def terminate_session(self, session_id: str, reason: str = "Unauthorized client detected") -> bool:
         """

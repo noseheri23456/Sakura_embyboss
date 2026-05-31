@@ -67,6 +67,7 @@ red_envelope = config.red_envelope
 moviepilot = config.moviepilot
 auto_update = config.auto_update
 api = config.api
+p115_config = config.p115
 save_config()
 
 LOGGER.info("配置文件加载完毕")
@@ -138,6 +139,24 @@ owner_p = admin_p + [
 if len(extra_emby_libs) > 0:
     owner_p += [BotCommand("extraembylibs_blockall", "一键关闭所有用户的额外媒体库 [owner]"),
                 BotCommand("extraembylibs_unblockall", "一键开启所有用户的额外媒体库 [owner]")]
+
+# 115 转存功能命令 (仅在启用时注册)
+if p115_config.status:
+    user_p += [
+        BotCommand("p115_status", "[私聊] 查看115任务进度"),
+        BotCommand("p115_history", "[私聊] 115历史任务"),
+        BotCommand("p115_cancel", "[私聊] 取消115任务"),
+        BotCommand("p115_buy", "[私聊] 购买115配额"),
+    ]
+    admin_p += [
+        BotCommand("p115_check", "检查115登录状态 [管理]"),
+        BotCommand("p115_quota", "115离线配额 [管理]"),
+        BotCommand("p115_token", "设置115 Token [管理]"),
+        BotCommand("p115_queue", "115全局队列 [管理]"),
+        BotCommand("p115_tasks", "115任务列表 [管理]"),
+        BotCommand("p115_pause", "暂停115传输 [管理]"),
+        BotCommand("p115_resume", "恢复115传输 [管理]"),
+    ]
 
 with contextlib.suppress(ImportError):
     import uvloop

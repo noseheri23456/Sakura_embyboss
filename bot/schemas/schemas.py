@@ -138,6 +138,24 @@ class RedEnvelope(BaseModel):
     status: bool = True  # 是否开启红包
     allow_private: bool = True # 是否允许专属红包
 
+
+class P115Config(BaseModel):
+    """115 网盘磁力转存功能配置"""
+    status: bool = False                                # 是否启用 115 功能
+    rclone_remote: str = "GDriveRemote"                 # rclone remote 名称
+    rclone_target_path: str = "/115_bot"                # rclone 上传目标路径
+    emby_media_path: str = "/media/google/115_bot"      # Emby 容器内的媒体路径
+    max_pending_tasks: int = 5                          # 默认排队任务上限
+    max_total_tasks: int = 50                           # 默认总任务数上限
+    max_file_size_gb: int = 50                          # 默认单任务大小上限 (GB)
+    stall_timeout_minutes: int = 30                     # 0% 停滞超时（分钟）
+    allowed_lv: Optional[List[str]] = ["a", "b"]        # 允许使用的 emby lv 等级
+    # 积分购买配额设定
+    allow_buy: bool = True                              # 是否允许用户购买额外配额
+    task_price: int = 10                                # 每次购买消耗的积分
+    tasks_per_purchase: int = 5                         # 每次购买获得的任务配额数
+
+
 class Config(BaseModel):
     bot_name: str
     bot_token: str
@@ -204,6 +222,7 @@ class Config(BaseModel):
     auto_update: AutoUpdate = Field(default_factory=AutoUpdate)
     red_envelope: RedEnvelope = Field(default_factory=RedEnvelope)
     api: API = Field(default_factory=API)
+    p115: P115Config = Field(default_factory=P115Config)
 
     def __init__(self, **data):
         super().__init__(**data)
