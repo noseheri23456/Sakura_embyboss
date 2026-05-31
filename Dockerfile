@@ -5,7 +5,8 @@ FROM python:3.10.11-alpine AS builder
 RUN apk add --no-cache --virtual .build-deps gcc musl-dev openssl-dev coreutils git
 COPY requirements.txt .
 # 安装 Python 包
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 # 删除编译后的字节码文件
 RUN find . -type f -name "*.pyc" -delete
 # 清理构建依赖
