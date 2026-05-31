@@ -1,0 +1,13 @@
+.git
+.github
+.idea
+.vscode
+__pycache__
+*.pyc
+data/
+log/
+.env
+venv/
+env/
+.dockerignore
+rclone.conf
