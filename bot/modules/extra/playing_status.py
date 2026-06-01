@@ -3,7 +3,7 @@ import asyncio
 from pathlib import Path
 from pyrogram.errors import MessageIdInvalid, MessageNotModified, RPCError
 
-from bot import bot, main_group, LOGGER
+from bot import bot, main_group, group, LOGGER
 from bot.func_helper.scheduler import scheduler
 from bot.func_helper.emby import emby as emby_service
 
@@ -50,7 +50,7 @@ async def update_playing_status():
             except Exception as e:
                 LOGGER.error(f"读取 playing_status_msg.txt 失败: {e}")
 
-        group_id = int(main_group)
+        group_id = group[0]
         new_msg_sent = False
 
         if msg_id:
