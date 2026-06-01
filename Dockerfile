@@ -38,6 +38,7 @@ ENV TZ=Asia/Shanghai \
 # 安装必要的系统运行时依赖包（已移除体积较大的构建依赖和 git）
 # uvloop 等编译库可能依赖 libstdc++
 RUN apk add --no-cache \
+    git \
     mariadb-connector-c \
     tzdata \
     mysql-client \
