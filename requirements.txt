@@ -27,3 +27,5 @@ cryptography==44.0.0
 aiosqlite>=0.20.0
 aiofiles>=23.0.0
 p115client @ git+https://github.com/ChenyangGao/p115client.git
+Brotli
+zstandard
