@@ -42,6 +42,7 @@ RUN apk add --no-cache \
     mariadb-connector-c \
     tzdata \
     mysql-client \
+    rclone \
     libstdc++ && \
     ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
