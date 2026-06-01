@@ -26,4 +26,4 @@ cryptography==44.0.0
 # 115 网盘转存模块依赖
 aiosqlite>=0.20.0
 aiofiles>=23.0.0
-p115client
+p115client==0.0.8.4.9
