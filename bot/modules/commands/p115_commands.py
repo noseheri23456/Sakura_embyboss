@@ -423,10 +423,10 @@ async def cmd_p115_token(_, msg):
         await _db.set_setting("p115_access_token", access_token)
         await _db.set_setting("p115_refresh_token", refresh_token)
         await sendMessage(msg, "✅ 115 Token 已保存")
-        logger.info(f"用户 {msg.from_user.id} 设置了 115 Token")
+        logger.info(f"p115_commands: 用户 {msg.from_user.id} 设置了 115 Token。Access长度: {len(access_token)}, Refresh长度: {len(refresh_token)}")
     except Exception as e:
         await sendMessage(msg, f"❌ 保存失败: {e}")
-        logger.error(f"保存 115 Token 失败: {e}")
+        logger.error(f"p115_commands: 保存 115 Token 失败: {e}")
 
 
 @bot.on_message(filters.command('p115_queue', prefixes) & filters.private & admins_on_filter)

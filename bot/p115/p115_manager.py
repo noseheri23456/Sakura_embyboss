@@ -31,7 +31,11 @@ class P115Manager:
         if refresh_token: refresh_token = refresh_token.strip()
 
         if not access_token or not refresh_token:
+            logger.error("115_manager: 数据库中未找到完整的 Token (access_token 或 refresh_token 为空)")
             raise ValueError("115 未配置 Token，请使用 /p115_token 进行认证。")
+
+        # 详细日志：打印截断的 Token 和长度，以证明 Token 读取正常
+        logger.info(f"115_manager: 从数据库读取到 Token。Access: [{access_token[:6]}...{access_token[-6:]}] (长度: {len(access_token)}), Refresh: [{refresh_token[:6]}...{refresh_token[-6:]}] (长度: {len(refresh_token)})")
 
         now = time.time()
 
@@ -40,7 +44,7 @@ class P115Manager:
             # 检查是否由于 /p115_token 覆盖了数据库导致 token 变化
             cache_key = f"{access_token}|{refresh_token}"
             if self._auth_credential != cache_key:
-                logger.info("检测到数据库 Token 已改变，重新初始化...")
+                logger.info("115_manager: 检测到数据库 Token 已改变 (用户重新设置了Token)，正在重置内部客户端状态...")
                 self.client = None
             else:
                 # 检查是否需要自动刷新 (超过 3600 秒)
