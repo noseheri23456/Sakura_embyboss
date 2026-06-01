@@ -170,6 +170,9 @@ except RuntimeError:
     asyncio.set_event_loop(asyncio.new_event_loop())
 
 from pyrogram import enums
+import pyrogram.utils
+# Fix for Telegram's new 64-bit channel IDs that exceed Pyrogram 2.0.106 limits
+pyrogram.utils.MIN_CHANNEL_ID = -10099999999999
 from pyromod import Client
 
 proxy = {} if not config.proxy.scheme else config.proxy.dict()
