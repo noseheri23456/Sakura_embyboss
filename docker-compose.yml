@@ -33,6 +33,7 @@ services:
 #      - mysql
 
   embyboss:
+    build: .
     image: jingwei520/sakura_embyboss:latest # ARM与AMD镜像名称相同，会自动加载适合的镜像
     container_name: embyboss
     restart: always
