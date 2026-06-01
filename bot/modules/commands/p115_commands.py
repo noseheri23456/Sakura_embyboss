@@ -367,7 +367,7 @@ async def cmd_p115_check(_, msg):
     await sendMessage(msg, "正在检查 115 登录状态...")
     try:
         client = await _p115._get_client()
-        user_info = await client.user_info(async_=True)
+        user_info = await client.user_info_open(async_=True)
         if user_info and user_info.get("state"):
             await sendMessage(msg, "✅ 115 状态正常：已登录")
         else:
@@ -743,7 +743,7 @@ async def cb_p115_check(_, call):
     await _ensure_init()
     try:
         client = await _p115._get_client()
-        user_info = await client.user_info(async_=True)
+        user_info = await client.user_info_open(async_=True)
         if user_info and user_info.get("state"):
             text = "✅ 115 状态正常：已登录"
         else:
