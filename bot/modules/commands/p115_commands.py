@@ -411,8 +411,8 @@ async def cmd_p115_token(_, msg):
             "/p115_token 4v4n6.xxx... 4v4n6.yyy..."
         )
 
-    access_token = parts[1]
-    refresh_token = parts[2]
+    access_token = parts[1].strip()
+    refresh_token = parts[2].strip()
 
     try:
         await _db.set_setting("p115_access_token", access_token)
@@ -791,8 +791,8 @@ async def cb_p115_token(_, call):
     if len(parts) < 2:
         return await editMessage(call, "❌ 格式错误。格式需为：`<access_token> <refresh_token>`", buttons=p115_admin_panel_ikb())
         
-    access_token = parts[0]
-    refresh_token = parts[1]
+    access_token = parts[0].strip()
+    refresh_token = parts[1].strip()
     
     await _ensure_init()
     try:

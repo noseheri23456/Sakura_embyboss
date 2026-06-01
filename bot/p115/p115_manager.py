@@ -26,6 +26,9 @@ class P115Manager:
         """延迟加载并获取 115 OpenClient 实例"""
         access_token = await self.db.get_setting("p115_access_token")
         refresh_token = await self.db.get_setting("p115_refresh_token")
+        
+        if access_token: access_token = access_token.strip()
+        if refresh_token: refresh_token = refresh_token.strip()
 
         if not access_token or not refresh_token:
             raise ValueError("115 未配置 Token，请使用 /p115_token 进行认证。")
