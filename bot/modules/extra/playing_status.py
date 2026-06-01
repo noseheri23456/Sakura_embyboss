@@ -1,7 +1,7 @@
 import os
 import asyncio
 from pathlib import Path
-from pyrogram.errors import MessageIdInvalid, MessageNotModified, MessageDeleted, RPCError
+from pyrogram.errors import MessageIdInvalid, MessageNotModified, RPCError
 
 from bot import bot, main_group, LOGGER
 from bot.func_helper.scheduler import scheduler
@@ -61,7 +61,7 @@ async def update_playing_status():
             except MessageNotModified:
                 # 内容未变，不需要报错
                 pass
-            except (MessageIdInvalid, MessageDeleted, RPCError) as e:
+            except (MessageIdInvalid, RPCError) as e:
                 LOGGER.warning(f"编辑置顶播放状态消息失败 ({e})，将发送新消息。")
                 msg_id = None  # 重置为 None，触发新建逻辑
                 
