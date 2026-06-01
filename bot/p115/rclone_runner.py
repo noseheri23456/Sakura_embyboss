@@ -93,3 +93,27 @@ class RcloneRunner:
                 "eta": match.group(5),
             }
         return None
+
+    async def get_folder_id(self, remote_path: str) -> str | None:
+        """获取云端目标文件夹的 Google Drive ID"""
+        target = f"{self.remote_name}:{self.target_path}/{remote_path}"
+        cmd = ["rclone", "backend", "getid", target]
+        
+        try:
+            logger.info(f"执行获取ID: {' '.join(cmd)}")
+            process = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await process.communicate()
+            
+            if process.returncode == 0:
+                folder_id = stdout.decode('utf-8').strip()
+                return folder_id
+            else:
+                logger.error(f"获取文件夹ID失败: {stderr.decode('utf-8')}")
+                return None
+        except Exception as e:
+            logger.error(f"执行获取ID命令出错: {e}")
+            return None

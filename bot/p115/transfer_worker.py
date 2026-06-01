@@ -318,6 +318,10 @@ class TransferWorker:
             logger.info(f"任务 {task_id} 全部处理完成")
             self._cleanup_progress(task_id)
 
+            # 生成 STRM
+            task_name = task['task_name'] or f"task_{task_id}"
+            await self._generate_strm(task_name)
+
             # 通知 Emby 扫描新上传的任务文件夹
             if task['task_name']:
                 await emby_notifier.notify_media_updated(task['task_name'])
@@ -466,3 +470,56 @@ class TransferWorker:
         total, used, free = shutil.disk_usage(self.temp_dir)
         buffer = max(2 * 1024 ** 3, required_size_bytes * 1.2)
         return free > buffer
+
+    async def _generate_strm(self, task_name: str):
+        from bot import p115_config
+        from . import http_session
+        
+        if not p115_config.cf_worker_url or not p115_config.local_strm_root:
+            logger.debug("未配置 CF Worker URL 或本地 STRM 目录，跳过生成 STRM")
+            return
+            
+        # 1. 获取 Google Drive Folder ID
+        folder_id = await self.rclone.get_folder_id(task_name)
+        if not folder_id:
+            logger.error(f"获取任务 {task_name} 的 Folder ID 失败，无法生成 STRM")
+            return
+            
+        # 2. 从 CF Worker 获取 STRM 数据
+        worker_url = p115_config.cf_worker_url.rstrip("/")
+        api_url = f"{worker_url}/api/strms-by-folder-id/{folder_id}?filter=all"
+        if p115_config.cf_worker_api_key:
+            api_url += f"&key={p115_config.cf_worker_api_key}"
+            
+        try:
+            session = await http_session.get_session()
+            async with session.get(api_url, timeout=30) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    files = data.get("files", [])
+                    
+                    if not files:
+                        logger.warning(f"从 CF Worker 未获取到任务 {task_name} 的文件数据")
+                        return
+                        
+                    # 3. 创建本地文件
+                    task_strm_dir = Path(p115_config.local_strm_root) / task_name
+                    for f in files:
+                        relative_path = f.get("path") or f.get("name")
+                        strm_content = f.get("strmContent")
+                        if not strm_content or not relative_path:
+                            continue
+                            
+                        local_path = task_strm_dir / relative_path
+                        local_path = local_path.with_suffix(local_path.suffix + ".strm")
+                        
+                        local_path.parent.mkdir(parents=True, exist_ok=True)
+                        with open(local_path, "w", encoding="utf-8") as out:
+                            out.write(strm_content)
+                            
+                    logger.info(f"成功为任务 {task_name} 生成了 {len(files)} 个 STRM 文件")
+                else:
+                    text = await resp.text()
+                    logger.error(f"从 CF Worker 获取 STRM 失败，状态码 {resp.status}: {text}")
+        except Exception as e:
+            logger.error(f"生成 STRM 时出错: {e}")

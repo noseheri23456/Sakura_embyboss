@@ -145,6 +145,9 @@ class P115Config(BaseModel):
     rclone_remote: str = "GDriveRemote"                 # rclone remote 名称
     rclone_target_path: str = "/115_bot"                # rclone 上传目标路径
     emby_media_path: str = "/media/google/115_bot"      # Emby 容器内的媒体路径
+    local_strm_root: str = "/strm"                      # 本地保存 STRM 文件的根目录
+    cf_worker_url: str = ""                             # CF Worker 域名或URL (例如: https://strm.yourdomain.workers.dev)
+    cf_worker_api_key: str = ""                         # CF Worker API 密钥
     max_pending_tasks: int = 5                          # 默认排队任务上限
     max_total_tasks: int = 50                           # 默认总任务数上限
     max_file_size_gb: int = 50                          # 默认单任务大小上限 (GB)

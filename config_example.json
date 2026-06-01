@@ -1,75 +1,124 @@
 {
+  "__comment_01": "==================== 基础机器人配置 ====================",
+  "__comment_bot_name": "机器人的用户名 (不需要带 @)",
   "bot_name": "xxxbot",
+  
+  "__comment_bot_token": "机器人 Token (从 BotFather 获取)",
   "bot_token": "5701:AAEvAHzsg30",
+  
+  "__comment_owner_api": "Telegram API ID 和 Hash (在 my.telegram.org 申请)",
   "owner_api": 73711,
-  "owner_hash": "",
-  "owner": xxxxxxx,
+  "owner_hash": "xxxxxxxxxxxx",
+  
+  "__comment_owner": "机器人主人的 Telegram User ID",
+  "owner": 123456789,
+  
+  "__comment_group": "允许机器人工作的群组 ID 列表",
   "group": [
     -100xxxxxx
   ],
+  
+  "__comment_main_group_and_chanel": "主群与官方频道的链接或标识",
   "main_group": "Aaaaa_su",
   "chanel": "su_yxfy",
+  
+  "__comment_bot_photo": "机器人的封面/头像图片地址",
   "bot_photo": "https://telegra.ph/file/3b6cd2a89b652e72e0d3b.png",
+  
+  "__comment_admins": "其他管理员的 Telegram User ID 列表",
   "admins": [],
+  
+  "__comment_money": "机器人经济系统的货币名称",
   "money": "花币",
+
+  "__comment_02": "==================== Emby 服务器配置 ====================",
+  "__comment_emby_api": "Emby 服务器的 API Key",
   "emby_api": "xxxxx",
+  
+  "__comment_emby_url": "Emby 服务器的直连地址 (带端口)",
   "emby_url": "http://255.255.255.255:8096",
+  
+  "__comment_emby_line": "发放给普通用户和白名单用户的线路域名",
   "emby_line": "susuyyds.com",
   "emby_whitelist_line": null,
-  "blocked_clients": [
-    ".*curl.*",
-    ".*wget.*",
-    ".*python.*",
-    ".*bot.*",
-    ".*spider.*",
-    ".*crawler.*",
-    ".*scraper.*",
-    ".*downloader.*",
-    ".*aria2.*",
-    ".*youtube-dl.*",
-    ".*yt-dlp.*",
-    ".*ffmpeg.*",
-    ".*vlc.*"
-  ],
-  "client_filter_terminate_session": true,
-  "client_filter_block_user": false,
-  "partition_libs": {},
-  "db_host": "localhost",
-  "db_user": "",
-  "db_pwd": "",
-  "db_name": "",
+  
+  "__comment_emby_block": "向普通用户屏蔽的 Emby 媒体库名称列表",
   "emby_block": [
     "nsfw"
   ],
+  
+  "__comment_extra_emby_libs": "额外开放或特殊处理的媒体库列表",
   "extra_emby_libs": [
     "电视"
   ],
+  
+  "__comment_partition_libs": "分区功能：自定义分区名对应的 Emby 媒体库列表",
+  "partition_libs": {},
+
+  "__comment_03": "==================== 客户端安全与防滥用配置 ====================",
+  "__comment_blocked_clients": "屏蔽的第三方客户端或爬虫 UA 关键词",
+  "blocked_clients": [
+    ".*curl.*", ".*wget.*", ".*python.*", ".*bot.*", ".*spider.*",
+    ".*crawler.*", ".*scraper.*", ".*downloader.*", ".*aria2.*",
+    ".*youtube-dl.*", ".*yt-dlp.*", ".*ffmpeg.*", ".*vlc.*"
+  ],
+  
+  "__comment_client_filter": "检测到违规 UA 时是否立即踢下线 (terminate_session) 或 封禁 (block_user)",
+  "client_filter_terminate_session": true,
+  "client_filter_block_user": false,
+
+  "__comment_04": "==================== 数据库连接与备份配置 ====================",
+  "__comment_db": "数据库连接信息",
+  "db_host": "localhost",
+  "db_user": "root",
+  "db_pwd": "password",
+  "db_name": "embyboss",
+  
+  "__comment_db_backup": "数据库备份策略 (如果部署在 Docker 中需开启 db_is_docker)",
+  "db_is_docker": true,
+  "db_docker_name": "mysql",
+  "db_backup_dir": "./db_backup",
+  "db_backup_maxcount": 7,
+
+  "__comment_05": "==================== 运营功能开关 (签到/兑换/权限) ====================",
   "open": {
+    "__comment_stat": "整体运营功能总开关 (false则关闭所有签到白名单等)",
     "stat": false,
+    
+    "__comment_register": "允许的总用户数、处理注册的并发数与排队上限",
     "all_user": 1000,
     "register_worker_count": 5,
     "register_queue_limit": 100,
+    
     "timing": 0,
     "tem": 0,
+    
+    "__comment_switches": "各项子功能开关",
     "allow_code": true,
     "checkin": true,
-    "exchange": true,
-    "whitelist": true,
+    "exchange": false,
+    "whitelist": false,
     "invite": false,
     "leave_ban": true,
-    "uplays": true,
+    "uplays": false,
+    
+    "__comment_costs": "各项操作消耗的积分",
     "exchange_cost": 100,
     "whitelist_cost": 9999,
     "invite_cost": 1000,
     "srank_cost": 5
   },
+
+  "__comment_06": "==================== 探针集成 (Nezha / Komari) ====================",
   "tz_ad": "",
   "tz_api": "",
   "tz_id": [],
   "tz_version": "v0",
   "tz_username": "",
   "tz_password": "",
-  "tz_note": "tz_version 可选值: v0 (Nezha V0 Token认证), v1 (Nezha V1 用户名密码认证), komari (Komari API Key认证)",
+  "tz_note": "tz_version 可选值: v0 (Nezha V0 Token认证), v1 (Nezha V1 用户名密码), komari (Komari API Key)",
+
+  "__comment_07": "==================== 其他系统组件 ====================",
   "ranks": {
     "logo": "SAKURA",
     "backdrop": false
@@ -84,11 +133,9 @@
     "low_activity": false,
     "backup_db": false
   },
-  "db_is_docker": true,
-  "db_docker_name": "mysql",
-  "db_backup_dir": "./db_backup",
-  "db_backup_maxcount": 7,
   "w_anti_chanel_ids": [],
+
+  "__comment_08": "==================== 代理设置 (加速 Telegram API) ====================",
   "proxy": {
     "scheme": "",
     "hostname": "",
@@ -96,6 +143,8 @@
     "username": "",
     "password": ""
   },
+
+  "__comment_09": "==================== MoviePilot 联动配置 ====================",
   "moviepilot": {
     "status": false,
     "host": null,
@@ -104,35 +153,56 @@
     "access_token": null,
     "price": 1
   },
+
+  "__comment_10": "==================== 自动更新配置 ====================",
   "auto_update": {
+    "__comment_repo": "监控的 GitHub 仓库地址 (可改为您自己的分支)",
     "status": true,
     "git_repo": "berry8838/Sakura_embyboss",
     "commit_sha": null
   },
+
+  "__comment_11": "==================== 群组红包配置 ====================",
   "red_envelope": {
     "status": true,
     "allow_private": true
   },
+
+  "__comment_12": "==================== 开放 API 配置 ====================",
   "api": {
     "status": true,
     "http_url": "0.0.0.0",
     "http_port": 8838,
-    "allow_origins": [
-      "*"
-    ]
+    "allow_origins": [ "*" ]
   },
+
+  "__comment_13": "==================== 115网盘离线下载与STRM代理全自动化 ====================",
   "p115": {
+    "__comment_115_switch": "是否开启 115 转存功能总开关",
     "status": false,
+    
+    "__comment_115_rclone": "rclone 挂载名与上传目标路径",
     "rclone_remote": "GDriveRemote",
     "rclone_target_path": "/115_bot",
+    
+    "__comment_115_strm_path": "自动生成 STRM 的机器人本地输出路径与对应的 Emby 内部映射路径",
     "emby_media_path": "/media/google/115_bot",
+    "local_strm_root": "/strm",
+    
+    "__comment_115_cf": "CF Worker 流媒体代理域名与鉴权密钥",
+    "cf_worker_url": "",
+    "cf_worker_api_key": "",
+    
+    "__comment_115_limits": "排队任务上限、任务容量上限与 0%卡死超时(分钟)",
     "max_pending_tasks": 5,
     "max_total_tasks": 50,
     "max_file_size_gb": 50,
     "stall_timeout_minutes": 30,
+    
+    "__comment_115_buy": "允许的用户等级以及积分购买配额设定",
     "allowed_lv": ["a", "b"],
     "allow_buy": true,
-    "task_price": 10,
-    "tasks_per_purchase": 5
+    "task_price": 15,
+    "tasks_per_purchase": 1
   }
 }
