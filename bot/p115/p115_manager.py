@@ -12,6 +12,31 @@ from p115client import P115OpenClient, tool
 from .database import Database
 from . import http_session
 
+# ======= 修复 p115client 上游的史诗级 Bug =======
+# p115client 的 default_parse 中使用了 `content[0] + content[-1] not in (b"{}", b"[]", b'""')`
+# 因为 content 是 memoryview，content[0] 是 int，相加永远是 int，永远不可能在 tuple of bytes 中。
+# 这导致它对所有明文 JSON 都强制尝试 ECDH 解密。在没有安装 lz4 C扩展的纯 Python 环境中，
+# 强行解密明文 JSON 得到的乱码通常不会抛出异常，从而替换掉了原有的 JSON 导致 [Errno 61] 乱码错误。
+import p115client.client
+from p115cipher import ecdh_aes_decrypt
+
+def _fixed_default_parse(_, content):
+    if not isinstance(content, (bytes, bytearray, memoryview)):
+        content = memoryview(content)
+    if content:
+        # 正确的 JSON 首尾字符检查
+        first, last = content[0], content[-1]
+        is_json = (first == 123 and last == 125) or (first == 91 and last == 93) or (first == 34 and last == 34)
+        if not is_json:
+            try:
+                content = ecdh_aes_decrypt(content)
+            except Exception:
+                pass
+    return p115client.client.json_loads(memoryview(content))
+
+p115client.client.default_parse = _fixed_default_parse
+# ====================================================
+
 logger = logging.getLogger(__name__)
 
 
