@@ -12,6 +12,26 @@ from p115client import P115OpenClient, tool
 from .database import Database
 from . import http_session
 
+# ======= 修复 p115client 上游 Bug 的猴子补丁 =======
+import p115client.client
+from p115cipher import ecdh_aes_decrypt
+import json
+
+def _fixed_default_parse(_, content):
+    if not isinstance(content, (bytes, bytearray, memoryview)):
+        content = memoryview(content)
+    if content and content[0] + content[-1] not in (b"{}", b"[]", b'""'):
+        try:
+            # 原版代码错误地传入了 decompress=True 导致 TypeError 并被默默吞掉
+            # 这里去掉 decompress=True，因为 p115cipher 0.0.5 并不接收这个参数
+            content = ecdh_aes_decrypt(content)
+        except Exception as e:
+            pass
+    return json.loads(memoryview(content))
+
+p115client.client.default_parse = _fixed_default_parse
+# ====================================================
+
 logger = logging.getLogger(__name__)
 
 
