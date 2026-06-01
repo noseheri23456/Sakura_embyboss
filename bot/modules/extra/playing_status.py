@@ -36,7 +36,9 @@ async def update_playing_status():
         else:
             text += "💤 当前没有人在观看任何内容\n"
             
-        text += "\n*(此消息自动刷新)*"
+        from datetime import datetime
+        now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        text += f"\n*(此消息自动刷新于 {now_str})*"
 
         # 尝试读取保存的 message_id
         msg_id = None
