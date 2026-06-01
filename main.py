@@ -1,6 +1,14 @@
 #! /usr/bin/python3
 # -*- coding: utf-8 -*-
 
+import asyncio
+import uvloop
+
+try:
+    asyncio.get_running_loop()
+except RuntimeError:
+    asyncio.set_event_loop(uvloop.new_event_loop())
+
 from bot import bot
 
 # 面板
