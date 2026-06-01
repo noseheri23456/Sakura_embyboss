@@ -373,8 +373,13 @@ async def cmd_p115_check(_, msg):
         else:
             await sendMessage(msg, "❌ 115 状态异常：Token 可能已失效，请使用 /p115_token 重新设置")
     except Exception as e:
-        logger.error(f"检查 115 状态失败: {e}")
-        await sendMessage(msg, f"❌ 115 状态异常：{e}")
+        err_str = str(e)
+        if "Errno 61" in err_str or "ENODATA" in err_str:
+            logger.error(f"检查 115 状态失败: {e}")
+            await sendMessage(msg, "❌ 115 状态异常：您的 Token 已失效 (Errno 61)。\n原因可能是您的 115_bot 仍在运行并抢占了 Token，导致这边的 Token 报废。请关闭旧的 115_bot 后，重新获取新 Token 并设置！")
+        else:
+            logger.error(f"检查 115 状态失败: {e}")
+            await sendMessage(msg, f"❌ 115 状态异常：{e}")
 
 
 @bot.on_message(filters.command('p115_quota', prefixes) & filters.private & admins_on_filter)

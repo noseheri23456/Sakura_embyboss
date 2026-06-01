@@ -71,7 +71,11 @@ class P115Manager:
                 await self._save_client_tokens()
                 logger.info("初始化时自动刷新 115 Token 成功")
             except Exception as e:
-                logger.warning(f"初始化时自动刷新 Token 失败 (可能仍有效，继续尝试): {e}")
+                err_str = str(e)
+                if "Errno 61" in err_str or "ENODATA" in err_str:
+                    logger.warning("初始化时自动刷新 Token 失败: 您的 Token 已完全失效！原因可能是:\n1. 您的 115_bot 还在后台运行，抢占并作废了新 Token。\n2. 您的 VPS IP 被 115 的 WAF/防火墙拦截 (表现为返回了一段无法解析的加密乱码)。")
+                else:
+                    logger.warning(f"初始化时自动刷新 Token 失败 (可能仍有效，继续尝试): {e}")
 
             self._last_refresh_time = time.time()
             self._auth_credential = f"{self.client.access_token}|{self.client.refresh_token}"
