@@ -3,7 +3,7 @@ from pykeyboard import InlineKeyboard, InlineButton
 from pyrogram.types import InlineKeyboardMarkup
 from pyromod.helpers import ikb, array_chunk
 from bot import chanel, main_group, bot_name, extra_emby_libs, tz_id, tz_ad, tz_api, tz_version, tz_username, tz_password, _open, sakura_b, \
-    schedall, auto_update, fuxx_pitao, moviepilot, red_envelope, config, LOGGER
+    schedall, auto_update, fuxx_pitao, moviepilot, red_envelope, config, LOGGER, p115_config
 from bot.func_helper import nezha_res
 from bot.func_helper.emby import emby
 from bot.func_helper.utils import members_info
@@ -63,6 +63,8 @@ def members_ikb(is_admin: bool = False, account: bool = False) -> InlineKeyboard
                     ]
         if moviepilot.status:
             normal.append([('🍿 点播中心', 'download_center')])
+        if getattr(p115_config, 'status', False):
+            normal.append([('🗂️ 115网盘', 'p115_panel')])
         normal.append([('♻️ 主界面', 'back_start')])
         return ikb(normal)
     else:
@@ -97,6 +99,22 @@ def store_ikb():
     return ikb([[(f'♾️ 兑换白名单', 'store-whitelist'), (f'🔥 兑换解封禁', 'store-reborn')],
                 [(f'🎟️ 兑换注册码', 'store-invite'), (f'🔍 查询注册码', 'store-query')],
                 [(f'❌ 取消', 'members')]])
+
+
+def p115_panel_ikb():
+    return ikb([
+        [('📊 任务状态', 'p115_cb_status'), ('🗂️ 历史任务', 'p115_cb_history')],
+        [('🛑 取消任务', 'p115_cb_cancel'), ('🛒 购买配额', 'p115_cb_buy')],
+        [('🔙 返回', 'members')]
+    ])
+
+def p115_admin_panel_ikb():
+    return ikb([
+        [('✅ 检查状态', 'p115_cb_check'), ('📊 查看配额', 'p115_cb_quota')],
+        [('🔑 设置Token', 'p115_cb_token'), ('📋 全局队列', 'p115_cb_queue')],
+        [('⏸ 暂停传输', 'p115_cb_pause'), ('▶️ 恢复传输', 'p115_cb_resume')],
+        [('🔙 返回', 'manage')]
+    ])
 
 
 re_store_renew = ikb([[('✨ 重新输入', 'changetg'), ('💫 取消输入', 'storeall')]])
@@ -140,7 +158,8 @@ async def cr_page_server():
 gm_ikb_content = ikb([[('⭕ 注册状态', 'open-menu'), ('🎟️ 创建兑换码', 'cr_link')],
                       [('💊 查询注册', 'ch_link'), ('🏬 兑换设置', 'set_renew')],
                       [('👥 用户列表', 'normaluser'), ('👑 白名单列表', 'whitelist'), ('💠 设备列表', 'user_devices')],
-                      [('🌏 定时', 'schedall'), ('🕹️ 主界面', 'back_start'), ('其他 🪟', 'back_config')]])
+                      [('🌏 定时', 'schedall'), ('🗂️ 115管理', 'p115_admin_panel'), ('其他 🪟', 'back_config')],
+                      [('🕹️ 主界面', 'back_start')]])
 
 
 def open_menu_ikb(openstats, timingstats) -> InlineKeyboardMarkup:

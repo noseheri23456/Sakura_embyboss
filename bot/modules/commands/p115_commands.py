@@ -23,8 +23,9 @@ from pyrogram import filters
 
 from bot import bot, prefixes, owner, p115_config
 from bot.func_helper.filters import admins_on_filter
-from bot.func_helper.msg_utils import sendMessage, deleteMessage
+from bot.func_helper.msg_utils import sendMessage, deleteMessage, editMessage, callAnswer, callListen
 from bot.func_helper.utils import judge_admins
+from bot.func_helper.fix_bottons import p115_panel_ikb, p115_admin_panel_ikb
 from bot.sql_helper.sql_emby import sql_get_emby, sql_update_emby, Emby
 
 from bot.p115.database import Database, init_db
@@ -535,3 +536,311 @@ async def cmd_p115_resume(_, msg):
         await sendMessage(msg, "▶️ 115 传输队列已恢复运行。")
     else:
         await sendMessage(msg, "115 传输队列正在运行中。")
+
+# --- 内联键盘面板与回调 ---
+
+@bot.on_callback_query(filters.regex('^p115_panel$'))
+async def cb_p115_panel(_, call):
+    if not _check_p115_enabled():
+        return await callAnswer(call, "❌ 115 转存功能未启用。", show_alert=True)
+    if not _check_user_permission(call.from_user.id):
+        return await callAnswer(call, "❌ 你没有使用 115 转存功能的权限。", show_alert=True)
+        
+    await callAnswer(call, "🗂️ 进入 115 网盘面板")
+    text = "🗂️ **115 网盘自动转存面板**\n\n请选择你需要进行的操作："
+    await editMessage(call, text, buttons=p115_panel_ikb())
+
+
+@bot.on_callback_query(filters.regex('^p115_cb_status$'))
+async def cb_p115_status(_, call):
+    if not _check_p115_enabled():
+        return await callAnswer(call, "❌ 115 转存功能未启用。", show_alert=True)
+    if not _check_user_permission(call.from_user.id):
+        return await callAnswer(call, "❌ 无权限。", show_alert=True)
+
+    await callAnswer(call, "📊 获取任务状态...")
+    await _ensure_init()
+    user_id = call.from_user.id
+    tasks = await _db.get_pending_tasks()
+
+    if not judge_admins(user_id):
+        tasks = [t for t in tasks if t['user_id'] == user_id]
+
+    if not tasks:
+        text = "当前没有正在进行或排队的任务。"
+    else:
+        text = "📊 **115 任务进度预览：**\n\n"
+        for t in tasks:
+            icon = "⏳" if t['status'] in ('PENDING', 'DOWNLOADING_115', 'OFFLINING_115') else "🚀"
+            text += f"{icon} ID: {t['id']} | {t['status']} | {t['task_name'] or '解析中...'}\n"
+            if t['status'] == 'TRANSFERRING' and t['id'] in _worker.active_progress:
+                text += f"  └ {_worker.active_progress[t['id']]}\n"
+    
+    await editMessage(call, text, buttons=p115_panel_ikb())
+
+
+@bot.on_callback_query(filters.regex('^p115_cb_history$'))
+async def cb_p115_history(_, call):
+    if not _check_p115_enabled():
+        return await callAnswer(call, "❌ 115 转存功能未启用。", show_alert=True)
+    if not _check_user_permission(call.from_user.id):
+        return await callAnswer(call, "❌ 无权限。", show_alert=True)
+
+    await callAnswer(call, "🗂️ 获取历史任务...")
+    await _ensure_init()
+    user_id = call.from_user.id
+    
+    # 简单展示第一页的10条历史任务
+    limit = 10
+    tasks = await _db.get_user_tasks(user_id, limit=limit, offset=0)
+    total_count = await _db.count_user_total_tasks(user_id)
+
+    if not tasks:
+        text = "你还没有添加过任何 115 任务。"
+    else:
+        text = f"🗂 **你的 115 最近历史任务** (共 {total_count} 个)：\n\n"
+        for t in tasks:
+            if t['status'] == 'DONE':
+                icon = "✅"
+            elif t['status'] == 'FAILED':
+                icon = "❌"
+            elif t['status'] == 'CANCELED':
+                icon = "🛑"
+            elif t['status'] in ('PENDING', 'DOWNLOADING_115', 'OFFLINING_115'):
+                icon = "⏳"
+            else:
+                icon = "🚀"
+
+            create_time = t['created_at'].split()[0] if t['created_at'] else "未知时间"
+            task_name = t['task_name'] or "未命名任务"
+            if len(task_name) > 30:
+                task_name = task_name[:27] + "..."
+
+            text += f"{icon} ID: {t['id']} | {create_time} | {t['status']}\n"
+            text += f"  └ {task_name}\n\n"
+        
+        if total_count > limit:
+            text += "提示: 更多历史记录请使用命令 `/p115_history <页码>` 查看。"
+
+    await editMessage(call, text, buttons=p115_panel_ikb())
+
+
+@bot.on_callback_query(filters.regex('^p115_cb_cancel$'))
+async def cb_p115_cancel(_, call):
+    if not _check_p115_enabled():
+        return await callAnswer(call, "❌ 115 转存功能未启用。", show_alert=True)
+    if not _check_user_permission(call.from_user.id):
+        return await callAnswer(call, "❌ 无权限。", show_alert=True)
+        
+    await callAnswer(call, "🛑 取消任务")
+    await editMessage(call, "🛑 请在 60 秒内输入要取消的任务 ID (仅限你自己的任务)：\n\n输入 `/cancel` 取消操作。", buttons=p115_panel_ikb())
+    
+    txt = await callListen(call, 60, buttons=p115_panel_ikb())
+    if txt is False:
+        return
+    await txt.delete()
+    if txt.text == '/cancel':
+        return await editMessage(call, "✅ 已取消操作", buttons=p115_panel_ikb())
+        
+    if not txt.text.isdigit():
+        return await editMessage(call, "❌ 输入错误，任务 ID 必须是数字。", buttons=p115_panel_ikb())
+        
+    await _ensure_init()
+    user_id = call.from_user.id
+    task_id = int(txt.text)
+    task = await _db.get_task(task_id)
+    
+    if not task or (task['user_id'] != user_id and not judge_admins(user_id)):
+        return await editMessage(call, "❌ 任务不存在或无权操作。", buttons=p115_panel_ikb())
+
+    if task['status'] in ('DONE', 'FAILED', 'CANCELED'):
+        return await editMessage(call, f"❌ 任务已处于 {task['status']} 状态。", buttons=p115_panel_ikb())
+
+    await _db.update_task(task_id, status='CANCELED')
+    import shutil
+    from pathlib import Path
+    temp_path = Path(f"data/downloads/task_{task_id}")
+    if temp_path.exists():
+        shutil.rmtree(temp_path)
+    
+    await editMessage(call, f"✅ 任务 {task_id} 已成功取消。", buttons=p115_panel_ikb())
+
+
+@bot.on_callback_query(filters.regex('^p115_cb_buy$'))
+async def cb_p115_buy(_, call):
+    if not _check_p115_enabled():
+        return await callAnswer(call, "❌ 115 转存功能未启用。", show_alert=True)
+    if not p115_config.allow_buy:
+        return await callAnswer(call, "❌ 管理员未开启配额购买功能。", show_alert=True)
+    if not _check_user_permission(call.from_user.id):
+        return await callAnswer(call, "❌ 无权限。", show_alert=True)
+
+    await callAnswer(call, "🛒 购买配额")
+    await _ensure_init()
+    user_id = call.from_user.id
+    emby_data = sql_get_emby(user_id)
+    if not emby_data:
+        return await editMessage(call, "❌ 找不到你的账号信息。", buttons=p115_panel_ikb())
+
+    price = p115_config.task_price
+    amount = p115_config.tasks_per_purchase
+    extra_quota = await _db.get_user_extra_quota(user_id)
+    current_total = p115_config.max_total_tasks + extra_quota
+
+    text = (f"🛒 **购买 115 任务配额**\n\n"
+            f"当前你的积分: **{emby_data.iv}**\n"
+            f"当前总配额: **{current_total}** (默认 {p115_config.max_total_tasks} + 额外 {extra_quota})\n\n"
+            f"价格: **{price}** 积分 / **{amount}** 个任务配额\n\n"
+            f"⚠️ 请回复 `确认购买` 以扣除积分，回复 `/cancel` 取消操作。")
+            
+    await editMessage(call, text, buttons=p115_panel_ikb())
+    
+    txt = await callListen(call, 60, buttons=p115_panel_ikb())
+    if txt is False:
+        return
+    await txt.delete()
+    
+    if txt.text == '/cancel':
+        return await editMessage(call, "✅ 已取消购买", buttons=p115_panel_ikb())
+        
+    if txt.text == '确认购买':
+        emby_data = sql_get_emby(user_id) # 重新获取最新积分
+        if emby_data.iv < price:
+            return await editMessage(call, f"❌ 积分不足！购买需要 {price} 积分，你当前有 {emby_data.iv} 积分。", buttons=p115_panel_ikb())
+        
+        new_iv = emby_data.iv - price
+        if sql_update_emby(Emby.tg == user_id, iv=new_iv):
+            await _db.add_user_extra_quota(user_id, amount)
+            new_extra = await _db.get_user_extra_quota(user_id)
+            new_total = p115_config.max_total_tasks + new_extra
+            success_text = (f"✅ **购买成功！**\n\n"
+                            f"扣除 {price} 积分，当前剩余: {new_iv} 积分\n"
+                            f"新增 {amount} 个配额，当前总配额: {new_total} 个")
+            await editMessage(call, success_text, buttons=p115_panel_ikb())
+            logger.info(f"用户 {user_id} 面板内花费 {price} 积分购买了 {amount} 个 115 任务配额")
+        else:
+            await editMessage(call, "❌ 数据库更新积分失败，请联系管理员。", buttons=p115_panel_ikb())
+    else:
+        await editMessage(call, "❌ 未输入确认口令，已取消。", buttons=p115_panel_ikb())
+
+
+# --- 管理员面板与回调 ---
+
+@bot.on_callback_query(filters.regex('^p115_admin_panel$') & admins_on_filter)
+async def cb_p115_admin_panel(_, call):
+    if not _check_p115_enabled():
+        return await callAnswer(call, "❌ 115 转存功能未启用。", show_alert=True)
+    
+    await callAnswer(call, "🗂️ 115网盘管理面板")
+    await editMessage(call, "🗂️ **115网盘管理面板**\n\n请选择你要进行的操作：", buttons=p115_admin_panel_ikb())
+
+@bot.on_callback_query(filters.regex('^p115_cb_check$') & admins_on_filter)
+async def cb_p115_check(_, call):
+    if not _check_p115_enabled():
+        return await callAnswer(call, "❌ 115 转存功能未启用。", show_alert=True)
+        
+    await callAnswer(call, "正在检查 115 登录状态...")
+    await _ensure_init()
+    try:
+        client = await _p115._get_client()
+        user_info = await client.user_info(async_=True)
+        if user_info and user_info.get("state"):
+            text = "✅ 115 状态正常：已登录"
+        else:
+            text = "❌ 115 状态异常：Token 可能已失效，请重新设置"
+    except Exception as e:
+        logger.error(f"检查 115 状态失败: {e}")
+        text = f"❌ 115 状态异常：{e}"
+        
+    await editMessage(call, text, buttons=p115_admin_panel_ikb())
+
+@bot.on_callback_query(filters.regex('^p115_cb_quota$') & admins_on_filter)
+async def cb_p115_quota(_, call):
+    if not _check_p115_enabled():
+        return await callAnswer(call, "❌ 115 转存功能未启用。", show_alert=True)
+        
+    await callAnswer(call, "获取离线配额...")
+    await _ensure_init()
+    quota = await _p115.get_offline_quota()
+    if quota is None:
+        text = "❌ 无法获取配额信息，请检查 Token 状态。"
+    else:
+        text = (f"📊 **115 离线下载配额：**\n"
+                f"  总配额: {quota['total']}\n"
+                f"  已使用: {quota['used']}\n"
+                f"  剩余: {quota['remaining']}")
+                
+    await editMessage(call, text, buttons=p115_admin_panel_ikb())
+
+@bot.on_callback_query(filters.regex('^p115_cb_token$') & admins_on_filter)
+async def cb_p115_token(_, call):
+    if not _check_p115_enabled():
+        return await callAnswer(call, "❌ 115 转存功能未启用。", show_alert=True)
+        
+    await callAnswer(call, "🔑 设置Token")
+    await editMessage(call, "🔑 请在 60 秒内发送新的 Token:\n\n格式：`<access_token> <refresh_token>`\n\n回复 `/cancel` 取消操作。", buttons=p115_admin_panel_ikb())
+    
+    txt = await callListen(call, 60, buttons=p115_admin_panel_ikb())
+    if txt is False:
+        return
+    await txt.delete()
+    if txt.text == '/cancel':
+        return await editMessage(call, "✅ 已取消设置", buttons=p115_admin_panel_ikb())
+        
+    parts = txt.text.split(maxsplit=1)
+    if len(parts) < 2:
+        return await editMessage(call, "❌ 格式错误。格式需为：`<access_token> <refresh_token>`", buttons=p115_admin_panel_ikb())
+        
+    access_token = parts[0]
+    refresh_token = parts[1]
+    
+    await _ensure_init()
+    try:
+        await _db.set_setting("p115_access_token", access_token)
+        await _db.set_setting("p115_refresh_token", refresh_token)
+        await editMessage(call, "✅ 115 Token 已保存", buttons=p115_admin_panel_ikb())
+        logger.info(f"管理员 {call.from_user.id} 面板设置了 115 Token")
+    except Exception as e:
+        await editMessage(call, f"❌ 保存失败: {e}", buttons=p115_admin_panel_ikb())
+        logger.error(f"保存 115 Token 失败: {e}")
+
+@bot.on_callback_query(filters.regex('^p115_cb_queue$') & admins_on_filter)
+async def cb_p115_queue(_, call):
+    if not _check_p115_enabled():
+        return await callAnswer(call, "❌ 115 转存功能未启用。", show_alert=True)
+        
+    await callAnswer(call, "获取全局队列...")
+    await _ensure_init()
+    tasks = await _db.get_pending_tasks()
+    if not tasks:
+        text = "当前 115 队列为空。"
+    else:
+        text = "📋 **115 全局队列状态：**\n"
+        for t in tasks:
+            text += f"ID: {t['id']} | User: {t['user_id']} | 状态: {t['status']} | {t['task_name'] or '未知'}\n"
+            
+    await editMessage(call, text, buttons=p115_admin_panel_ikb())
+
+@bot.on_callback_query(filters.regex('^p115_cb_pause$') & admins_on_filter)
+async def cb_p115_pause(_, call):
+    if not _check_p115_enabled():
+        return await callAnswer(call, "❌ 115 转存功能未启用。", show_alert=True)
+        
+    await callAnswer(call, "⏸ 暂停队列", show_alert=True)
+    await _ensure_init()
+    _worker.is_running = False
+    await editMessage(call, "⏸ 115 传输队列已暂停。", buttons=p115_admin_panel_ikb())
+
+@bot.on_callback_query(filters.regex('^p115_cb_resume$') & admins_on_filter)
+async def cb_p115_resume(_, call):
+    if not _check_p115_enabled():
+        return await callAnswer(call, "❌ 115 转存功能未启用。", show_alert=True)
+        
+    await callAnswer(call, "▶️ 恢复队列", show_alert=True)
+    await _ensure_init()
+    if not _worker.is_running:
+        asyncio.create_task(_worker.start())
+        await editMessage(call, "▶️ 115 传输队列已恢复运行。", buttons=p115_admin_panel_ikb())
+    else:
+        await editMessage(call, "▶️ 115 传输队列正在运行中，无需恢复。", buttons=p115_admin_panel_ikb())
+
