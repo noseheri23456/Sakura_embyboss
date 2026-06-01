@@ -610,6 +610,18 @@ class Embyservice(metaclass=Singleton):
             LOGGER.error(f"获取播放详情异常: {str(e)}")
             return []
 
+    async def get_current_playing_count(self) -> int:
+        """
+        获取当前正在播放的总人数
+        :return: int
+        """
+        try:
+            details = await self.get_current_playing_details()
+            return len(details)
+        except Exception as e:
+            LOGGER.error(f"获取当前播放人数异常: {str(e)}")
+            return -1
+
     async def terminate_session(self, session_id: str, reason: str = "Unauthorized client detected") -> bool:
         """
         终止指定的播放会话
