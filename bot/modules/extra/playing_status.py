@@ -17,12 +17,8 @@ async def update_playing_status():
         return
         
     try:
-        playing_count = await emby_service.get_current_playing_count()
         details = await emby_service.get_current_playing_details()
-        
-        if playing_count == -1:
-            LOGGER.error("无法获取播放状态，跳过本次更新。")
-            return
+        playing_count = len(details)
             
         # 构建消息内容
         text = f"📺 **Emby 实时播放状态** (每分钟更新)\n\n"

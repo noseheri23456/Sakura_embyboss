@@ -234,7 +234,6 @@ def convert_to_beijing_time(original_date):
     return dt
 
 
-@cache.memoize(ttl=300)
 async def get_users():
     # 创建一个空字典来存储用户的 first_name 和 id
     members_dict = {}
@@ -310,10 +309,9 @@ class Singleton(abc.ABCMeta, type):
     _instances: dict = {}
 
     def __call__(cls, *args, **kwargs):
-        key = (cls, args, frozenset(kwargs.items()))
-        if key not in cls._instances:
-            cls._instances[key] = super().__call__(*args, **kwargs)
-        return cls._instances[key]
+        if cls not in cls._instances:
+            cls._instances[cls] = super().__call__(*args, **kwargs)
+        return cls._instances[cls]
 
 # import random
 # import grequests

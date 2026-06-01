@@ -586,7 +586,6 @@ class Embyservice(metaclass=Singleton):
             enable_all_folders=False
         )
 
-    @cache.memoize(ttl=30)
     async def get_current_playing_details(self) -> list:
         """
         获取当前正在播放的详细信息
