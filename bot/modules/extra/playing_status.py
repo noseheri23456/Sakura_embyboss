@@ -26,10 +26,13 @@ async def update_playing_status():
         text += "━" * 20 + "\n"
         
         if details:
-            for d in details:
-                text += f"👤 `{d['username']}` 正在观看:\n"
-                text += f"🎬 {d['title']}\n"
-                text += "━" * 20 + "\n"
+            for i, d in enumerate(details):
+                added_text = f"👤 `{d['username']}` 正在观看:\n🎬 {d['title']}\n" + "━" * 20 + "\n"
+                # Telegram 消息长度限制为 4096，这里预留一些余量
+                if len(text) + len(added_text) > 3800:
+                    text += f"...\n(由于长度限制，仅显示前 {i} 位用户的播放状态)\n"
+                    break
+                text += added_text
         else:
             text += "💤 当前没有人在观看任何内容\n"
             
