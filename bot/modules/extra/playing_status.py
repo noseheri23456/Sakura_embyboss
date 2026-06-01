@@ -5,7 +5,7 @@ from pyrogram.errors import MessageIdInvalid, MessageNotModified, RPCError
 
 from bot import bot, main_group, LOGGER
 from bot.func_helper.scheduler import scheduler
-from bot.func_helper.emby import Embyservice
+from bot.func_helper.emby import emby as emby_service
 
 MSG_ID_FILE = Path("data/playing_status_msg.txt")
 
@@ -17,7 +17,6 @@ async def update_playing_status():
         return
         
     try:
-        emby_service = Embyservice()
         playing_count = await emby_service.get_current_playing_count()
         details = await emby_service.get_current_playing_details()
         
