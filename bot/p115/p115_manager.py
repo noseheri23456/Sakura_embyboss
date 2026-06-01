@@ -38,7 +38,7 @@ class P115Manager:
         # 如果客户端已存在
         if self.client is not None:
             # 检查是否由于 /p115_token 覆盖了数据库导致 token 变化
-            cache_key = f"{access_token[:10]}|{refresh_token[:10]}"
+            cache_key = f"{access_token}|{refresh_token}"
             if self._auth_credential != cache_key:
                 logger.info("检测到数据库 Token 已改变，重新初始化...")
                 self.client = None
@@ -74,7 +74,7 @@ class P115Manager:
                 logger.warning(f"初始化时自动刷新 Token 失败 (可能仍有效，继续尝试): {e}")
 
             self._last_refresh_time = time.time()
-            self._auth_credential = f"{self.client.access_token[:10]}|{self.client.refresh_token[:10]}"
+            self._auth_credential = f"{self.client.access_token}|{self.client.refresh_token}"
         except Exception as e:
             logger.error(f"创建 115 OpenClient 失败: {e}")
             raise
@@ -85,7 +85,7 @@ class P115Manager:
         """将客户端内存中的最新 token 持久化到数据库"""
         await self.db.set_setting("p115_access_token", self.client.access_token)
         await self.db.set_setting("p115_refresh_token", self.client.refresh_token)
-        self._auth_credential = f"{self.client.access_token[:10]}|{self.client.refresh_token[:10]}"
+        self._auth_credential = f"{self.client.access_token}|{self.client.refresh_token}"
 
     async def get_offline_quota(self) -> dict:
         """获取 115 离线下载配额信息

@@ -2,7 +2,7 @@
 FROM python:3.12-alpine AS builder
 
 # 安装必要的构建依赖
-RUN apk add --no-cache gcc musl-dev openssl-dev coreutils libffi-dev
+RUN apk add --no-cache gcc musl-dev openssl-dev coreutils libffi-dev git
 
 # 环境变量：不生成.pyc文件，禁用pip缓存
 ENV PYTHONDONTWRITEBYTECODE=1 \
