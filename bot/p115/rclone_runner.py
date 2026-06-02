@@ -95,30 +95,48 @@ class RcloneRunner:
         return None
 
     async def get_folder_id(self, remote_path: str) -> str | None:
-        """获取云端目标文件夹的 Google Drive ID"""
+        """获取云端目标文件夹的 Google Drive ID (带自动降级重试机制)"""
         import json
+        import os
+        
         target = f"{self.remote_name}:{self.target_path}/{remote_path}"
-        cmd = ["rclone", "lsjson", "--stat", target]
+        
+        # 1. 首选方案: 使用 --stat 获取单个目录信息 (高效)
+        cmd_stat = ["rclone", "lsjson", "--stat", target]
+        try:
+            logger.info(f"尝试用 --stat 获取ID: {' '.join(cmd_stat)}")
+            proc_stat = await asyncio.create_subprocess_exec(
+                *cmd_stat, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+            )
+            stdout, stderr = await proc_stat.communicate()
+            if proc_stat.returncode == 0:
+                data = json.loads(stdout.decode('utf-8'))
+                if isinstance(data, dict) and data.get('ID'):
+                    return data.get('ID')
+        except Exception as e:
+            logger.warning(f"--stat 方案失败，准备降级尝试: {e}")
+            
+        # 2. 降级方案: 列出父目录，遍历查找 (慢，但极其稳定)
+        remote_path = remote_path.replace('\\', '/')
+        parent_dir = os.path.dirname(remote_path)
+        folder_name = os.path.basename(remote_path)
+        
+        target_parent = f"{self.remote_name}:{self.target_path}/{parent_dir}" if parent_dir else f"{self.remote_name}:{self.target_path}"
+        cmd_ls = ["rclone", "lsjson", target_parent]
         
         try:
-            logger.info(f"执行获取ID: {' '.join(cmd)}")
-            process = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
+            logger.info(f"降级使用父目录遍历获取ID: {' '.join(cmd_ls)}")
+            proc_ls = await asyncio.create_subprocess_exec(
+                *cmd_ls, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
             )
-            stdout, stderr = await process.communicate()
-            
-            if process.returncode == 0:
-                try:
-                    data = json.loads(stdout.decode('utf-8'))
-                    return data.get('ID')
-                except json.JSONDecodeError:
-                    logger.error(f"解析 rclone lsjson 输出失败: {stdout.decode('utf-8')}")
-                    return None
-            else:
-                logger.error(f"获取文件夹ID失败: {stderr.decode('utf-8')}")
-                return None
+            stdout, stderr = await proc_ls.communicate()
+            if proc_ls.returncode == 0:
+                items = json.loads(stdout.decode('utf-8'))
+                for item in items:
+                    if item.get('Name') == folder_name and item.get('IsDir'):
+                        return item.get('ID')
+            logger.error(f"彻底获取文件夹ID失败: {stderr.decode('utf-8')}")
         except Exception as e:
-            logger.error(f"执行获取ID命令出错: {e}")
-            return None
+            logger.error(f"降级获取ID出错: {e}")
+            
+        return None
