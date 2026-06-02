@@ -95,29 +95,14 @@ class RcloneRunner:
         return None
 
     async def get_folder_id(self, remote_path: str) -> str | None:
-        """获取云端目标文件夹的 Google Drive ID (带自动降级重试机制)"""
+        """获取云端目标文件夹的 Google Drive ID (使用 link 方案)"""
         import json
         import os
         import re
         
         target = f"{self.remote_name}:{self.target_path}/{remote_path}"
         
-        # 1. 首选方案: 使用 --stat 获取单个目录信息
-        cmd_stat = ["rclone", "lsjson", "--stat", target]
-        try:
-            logger.info(f"尝试用 --stat 获取ID: {' '.join(cmd_stat)}")
-            proc_stat = await asyncio.create_subprocess_exec(
-                *cmd_stat, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
-            )
-            stdout, stderr = await proc_stat.communicate()
-            if proc_stat.returncode == 0:
-                data = json.loads(stdout.decode('utf-8'))
-                if isinstance(data, dict) and data.get('ID'):
-                    return data.get('ID')
-        except Exception as e:
-            logger.warning(f"--stat 方案失败: {e}")
-            
-        # 2. 降级方案 A: 针对特定 rclone 分支 (如 1.72.1-DEV) lsjson 丢失 ID 的情况，利用 link 提取
+        # 1. 首选方案: 利用 link 提取 Google Drive 的文件/文件夹 ID
         cmd_link = ["rclone", "link", target]
         try:
             logger.info(f"尝试用 rclone link 提取ID: {' '.join(cmd_link)}")
@@ -131,10 +116,12 @@ class RcloneRunner:
                 if match:
                     logger.info(f"成功通过 link 提取到 ID: {match.group(0)}")
                     return match.group(0)
+            else:
+                logger.warning(f"link 命令返回失败: {stderr.decode('utf-8')}")
         except Exception as e:
-            logger.warning(f"link 方案失败: {e}")
+            logger.warning(f"link 方案执行异常: {e}")
             
-        # 3. 降级方案 B: 列出父目录，遍历查找 (慢，但极其稳定)
+        # 2. 降级方案: 列出父目录，遍历查找 (慢，但极其稳定)
         remote_path = remote_path.replace('\\', '/')
         parent_dir = os.path.dirname(remote_path)
         folder_name = os.path.basename(remote_path)
