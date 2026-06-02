@@ -21,7 +21,7 @@ import logging
 
 from pyrogram import filters
 
-from bot import bot, prefixes, owner, p115_config
+from bot import bot, prefixes, owner, p115_config, save_config
 from bot.func_helper.filters import admins_on_filter
 from bot.func_helper.msg_utils import sendMessage, deleteMessage, editMessage, callAnswer, callListen
 from bot.func_helper.utils import judge_admins
@@ -211,6 +211,33 @@ async def cmd_p115_status(_, msg):
         text += f"{icon} ID: {t['id']} | {t['status']} | {t['task_name'] or '解析中...'}\n"
         if t['status'] == 'TRANSFERRING' and t['id'] in _worker.active_progress:
             text += f"  └ {_worker.active_progress[t['id']]}\n"
+    await sendMessage(msg, text)
+
+
+@bot.on_message(filters.command('p115_myquota', prefixes) & filters.private)
+async def cmd_p115_myquota(_, msg):
+    """查看我的115配额"""
+    if not _check_p115_enabled():
+        return await sendMessage(msg, "❌ 115 转存功能未启用。")
+    if not _check_user_permission(msg.from_user.id):
+        return await sendMessage(msg, "❌ 你没有使用 115 转存功能的权限。")
+
+    await _ensure_init()
+    user_id = msg.from_user.id
+
+    extra_quota = await _db.get_user_extra_quota(user_id)
+    total_allowed = p115_config.max_total_tasks + extra_quota
+    total_used = await _db.count_user_total_tasks(user_id)
+    remaining = max(0, total_allowed - total_used)
+    pending_count = await _db.count_user_pending_tasks(user_id)
+
+    text = (f"📊 **你的 115 任务配额：**\n\n"
+            f"📦 **总任务配额:** {total_used} / {total_allowed}\n"
+            f"   └ 剩余可提交: **{remaining}** 次\n"
+            f"   └ 基础额度 {p115_config.max_total_tasks} + 额外购买 {extra_quota}\n\n"
+            f"⏳ **当前并发排队:** {pending_count} / {p115_config.max_pending_tasks}\n"
+            f"💾 **单文件大小限制:** {p115_config.max_file_size_gb} GB\n\n"
+            f"💡 提示: 发送 /p115_buy 或在面板中点击“购买配额”可增加总次数上限。")
     await sendMessage(msg, text)
 
 
@@ -630,6 +657,32 @@ async def cb_p115_history(_, call):
     await editMessage(call, text, buttons=p115_panel_ikb())
 
 
+@bot.on_callback_query(filters.regex('^p115_cb_myquota$'))
+async def cb_p115_myquota(_, call):
+    if not _check_p115_enabled():
+        return await callAnswer(call, "❌ 115 转存功能未启用。", show_alert=True)
+    if not _check_user_permission(call.from_user.id):
+        return await callAnswer(call, "❌ 无权限。", show_alert=True)
+
+    await callAnswer(call, "获取配额信息...")
+    user_id = call.from_user.id
+
+    extra_quota = await _db.get_user_extra_quota(user_id)
+    total_allowed = p115_config.max_total_tasks + extra_quota
+    total_used = await _db.count_user_total_tasks(user_id)
+    remaining = max(0, total_allowed - total_used)
+    pending_count = await _db.count_user_pending_tasks(user_id)
+
+    text = (f"📊 **你的 115 任务配额：**\n\n"
+            f"📦 **总任务配额:** {total_used} / {total_allowed}\n"
+            f"   └ 剩余可提交: **{remaining}** 次\n"
+            f"   └ 基础额度 {p115_config.max_total_tasks} + 额外购买 {extra_quota}\n\n"
+            f"⏳ **当前并发排队:** {pending_count} / {p115_config.max_pending_tasks}\n"
+            f"💾 **单文件大小限制:** {p115_config.max_file_size_gb} GB\n\n"
+            f"💡 提示: 点击“🛒 购买配额”可使用积分增加总次数上限。")
+    await editMessage(call, text, buttons=p115_panel_ikb())
+
+
 @bot.on_callback_query(filters.regex('^p115_cb_cancel$'))
 async def cb_p115_cancel(_, call):
     if not _check_p115_enabled():
@@ -733,10 +786,16 @@ async def cb_p115_buy(_, call):
 
 @bot.on_callback_query(filters.regex('^p115_admin_panel$') & admins_on_filter)
 async def cb_p115_admin_panel(_, call):
-    if not _check_p115_enabled():
-        return await callAnswer(call, "❌ 115 转存功能未启用。", show_alert=True)
-    
     await callAnswer(call, "🗂️ 115网盘管理面板")
+    await editMessage(call, "🗂️ **115网盘管理面板**\n\n请选择你要进行的操作：", buttons=p115_admin_panel_ikb())
+
+@bot.on_callback_query(filters.regex('^p115_cb_toggle$') & admins_on_filter)
+async def cb_p115_toggle(_, call):
+    p115_config.status = not p115_config.status
+    save_config()
+    
+    status_text = "已开启" if p115_config.status else "已关闭"
+    await callAnswer(call, f"✅ 115 转存功能{status_text}", show_alert=True)
     await editMessage(call, "🗂️ **115网盘管理面板**\n\n请选择你要进行的操作：", buttons=p115_admin_panel_ikb())
 
 @bot.on_callback_query(filters.regex('^p115_cb_check$') & admins_on_filter)

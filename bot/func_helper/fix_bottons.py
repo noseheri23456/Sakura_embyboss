@@ -104,12 +104,14 @@ def store_ikb():
 def p115_panel_ikb():
     return ikb([
         [('📊 任务状态', 'p115_cb_status'), ('🗂️ 历史任务', 'p115_cb_history')],
-        [('🛑 取消任务', 'p115_cb_cancel'), ('🛒 购买配额', 'p115_cb_buy')],
-        [('🔙 返回', 'members')]
+        [('ℹ️ 我的配额', 'p115_cb_myquota'), ('🛒 购买配额', 'p115_cb_buy')],
+        [('🛑 取消任务', 'p115_cb_cancel'), ('🔙 返回', 'members')]
     ])
 
 def p115_admin_panel_ikb():
+    status_btn = ('🟢 115 已开启 (点击关闭)', 'p115_cb_toggle') if p115_config.status else ('🔴 115 已关闭 (点击开启)', 'p115_cb_toggle')
     return ikb([
+        [status_btn],
         [('✅ 检查状态', 'p115_cb_check'), ('📊 查看配额', 'p115_cb_quota')],
         [('🔑 设置Token', 'p115_cb_token'), ('📋 全局队列', 'p115_cb_queue')],
         [('⏸ 暂停传输', 'p115_cb_pause'), ('▶️ 恢复传输', 'p115_cb_resume')],

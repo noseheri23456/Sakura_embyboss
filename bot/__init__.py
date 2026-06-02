@@ -145,6 +145,7 @@ if p115_config.status:
     user_p += [
         BotCommand("p115_status", "[私聊] 查看115任务进度"),
         BotCommand("p115_history", "[私聊] 115历史任务"),
+        BotCommand("p115_myquota", "[私聊] 查看我的115配额"),
         BotCommand("p115_cancel", "[私聊] 取消115任务"),
         BotCommand("p115_buy", "[私聊] 购买115配额"),
     ]
