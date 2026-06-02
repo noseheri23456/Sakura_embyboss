@@ -97,8 +97,23 @@ class RcloneRunner:
     async def get_folder_id(self, remote_path: str) -> str | None:
         """获取云端目标文件夹的 Google Drive ID"""
         import json
-        target = f"{self.remote_name}:{self.target_path}/{remote_path}"
-        cmd = ["rclone", "lsjson", "--stat", target]
+        import os
+        
+        # Split remote_path into parent and name
+        # If remote_path is 'SAN-465', parent_dir is '', folder_name is 'SAN-465'
+        # If remote_path is 'SAN-465/sub', parent_dir is 'SAN-465', folder_name is 'sub'
+        # Convert path to posix style just in case
+        remote_path = remote_path.replace('\\', '/')
+        
+        parent_dir = os.path.dirname(remote_path)
+        folder_name = os.path.basename(remote_path)
+        
+        if parent_dir:
+            target = f"{self.remote_name}:{self.target_path}/{parent_dir}"
+        else:
+            target = f"{self.remote_name}:{self.target_path}"
+            
+        cmd = ["rclone", "lsjson", target]
         
         try:
             logger.info(f"执行获取ID: {' '.join(cmd)}")
@@ -111,13 +126,17 @@ class RcloneRunner:
             
             if process.returncode == 0:
                 try:
-                    data = json.loads(stdout.decode('utf-8'))
-                    return data.get('ID')
+                    items = json.loads(stdout.decode('utf-8'))
+                    for item in items:
+                        if item.get('Name') == folder_name and item.get('IsDir'):
+                            return item.get('ID')
+                    logger.error(f"在 {target} 中未找到文件夹 {folder_name}")
+                    return None
                 except json.JSONDecodeError:
                     logger.error(f"解析 rclone lsjson 输出失败: {stdout.decode('utf-8')}")
                     return None
             else:
-                logger.error(f"获取文件夹ID失败: {stderr.decode('utf-8')}")
+                logger.error(f"获取文件夹列表失败: {stderr.decode('utf-8')}")
                 return None
         except Exception as e:
             logger.error(f"执行获取ID命令出错: {e}")

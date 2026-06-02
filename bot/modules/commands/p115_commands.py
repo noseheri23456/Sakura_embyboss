@@ -665,6 +665,8 @@ async def cb_p115_myquota(_, call):
         return await callAnswer(call, "❌ 无权限。", show_alert=True)
 
     await callAnswer(call, "获取配额信息...")
+    await _ensure_init()
+    
     user_id = call.from_user.id
 
     extra_quota = await _db.get_user_extra_quota(user_id)
