@@ -485,18 +485,24 @@ class TransferWorker:
             logger.error(f"获取任务 {task_name} 的 Folder ID 失败，无法生成 STRM")
             return
             
-        # 2. 从 CF Worker 获取 STRM 数据
+        # 2. 从 CF Worker 获取目录结构
         worker_url = p115_config.cf_worker_url.rstrip("/")
-        api_url = f"{worker_url}/api/strms-by-folder-id/{folder_id}?filter=all"
+        api_url = f"{worker_url}/api/tree/{folder_id}"
         if p115_config.cf_worker_api_key:
-            api_url += f"&key={p115_config.cf_worker_api_key}"
+            api_url += f"?key={p115_config.cf_worker_api_key}"
             
         try:
             session = await http_session.get_session()
             async with session.get(api_url, timeout=30) as resp:
                 if resp.status == 200:
                     data = await resp.json()
-                    files = data.get("files", [])
+                    
+                    # 兼容可能返回的 JSON 结构
+                    files = []
+                    if isinstance(data, list):
+                        files = data
+                    elif isinstance(data, dict):
+                        files = data.get("files", data.get("items", []))
                     
                     if not files:
                         logger.warning(f"从 CF Worker 未获取到任务 {task_name} 的文件数据")
@@ -504,22 +510,39 @@ class TransferWorker:
                         
                     # 3. 创建本地文件
                     task_strm_dir = Path(p115_config.local_strm_root) / task_name
+                    strm_count = 0
                     for f in files:
-                        relative_path = f.get("path") or f.get("name")
-                        strm_content = f.get("strmContent")
-                        if not strm_content or not relative_path:
+                        # 忽略目录类型
+                        if f.get("mimeType") == "application/vnd.google-apps.folder" or f.get("isDir") or f.get("is_dir"):
                             continue
+                            
+                        file_id = f.get("id")
+                        relative_path = f.get("path") or f.get("name")
+                        
+                        if not file_id or not relative_path:
+                            continue
+                            
+                        # 过滤非媒体文件 (防垃圾)
+                        ext = Path(relative_path).suffix.lower()
+                        if ext not in ('.mp4', '.mkv', '.avi', '.ts', '.iso', '.rmvb', '.flv', '.wmv'):
+                            continue
+                            
+                        # 拼接本地生成的 STRM 直链地址
+                        strm_url = f"{worker_url}/api/file/{file_id}"
+                        if p115_config.cf_worker_api_key:
+                            strm_url += f"?key={p115_config.cf_worker_api_key}"
                             
                         local_path = task_strm_dir / relative_path
                         local_path = local_path.with_suffix(local_path.suffix + ".strm")
                         
                         local_path.parent.mkdir(parents=True, exist_ok=True)
                         with open(local_path, "w", encoding="utf-8") as out:
-                            out.write(strm_content)
+                            out.write(strm_url)
+                        strm_count += 1
                             
-                    logger.info(f"成功为任务 {task_name} 生成了 {len(files)} 个 STRM 文件")
+                    logger.info(f"成功为任务 {task_name} 生成了 {strm_count} 个 STRM 文件")
                 else:
                     text = await resp.text()
-                    logger.error(f"从 CF Worker 获取 STRM 失败，状态码 {resp.status}: {text}")
+                    logger.error(f"从 CF Worker 获取目录结构失败，状态码 {resp.status}: {text}")
         except Exception as e:
             logger.error(f"生成 STRM 时出错: {e}")
