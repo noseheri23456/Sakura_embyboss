@@ -96,8 +96,9 @@ class RcloneRunner:
 
     async def get_folder_id(self, remote_path: str) -> str | None:
         """获取云端目标文件夹的 Google Drive ID"""
+        import json
         target = f"{self.remote_name}:{self.target_path}/{remote_path}"
-        cmd = ["rclone", "backend", "getid", target]
+        cmd = ["rclone", "lsjson", "--stat", target]
         
         try:
             logger.info(f"执行获取ID: {' '.join(cmd)}")
@@ -109,8 +110,12 @@ class RcloneRunner:
             stdout, stderr = await process.communicate()
             
             if process.returncode == 0:
-                folder_id = stdout.decode('utf-8').strip()
-                return folder_id
+                try:
+                    data = json.loads(stdout.decode('utf-8'))
+                    return data.get('ID')
+                except json.JSONDecodeError:
+                    logger.error(f"解析 rclone lsjson 输出失败: {stdout.decode('utf-8')}")
+                    return None
             else:
                 logger.error(f"获取文件夹ID失败: {stderr.decode('utf-8')}")
                 return None
