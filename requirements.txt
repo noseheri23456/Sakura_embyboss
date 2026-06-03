@@ -26,6 +26,6 @@ cryptography==44.0.0
 # 115 网盘转存模块依赖
 aiosqlite>=0.20.0
 aiofiles>=23.0.0
-p115client @ git+https://github.com/ChenyangGao/p115client.git
+p115client==0.0.8.5.1.1
 Brotli
 zstandard
