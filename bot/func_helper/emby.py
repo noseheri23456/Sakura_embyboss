@@ -287,6 +287,9 @@ class Embyservice(metaclass=Singleton):
             if result.success:
                 LOGGER.info(f"成功删除用户: {emby_id}")
                 return True
+            elif result.error == "资源不存在":
+                LOGGER.info(f"用户 {emby_id} 已经不存在，跳过删除操作")
+                return True
             else:
                 LOGGER.error(f"删除用户失败: {emby_id} - {result.error}")
                 return False
