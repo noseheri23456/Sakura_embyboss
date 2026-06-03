@@ -90,9 +90,9 @@ def _check_user_permission(user_id: int) -> bool:
 
 # --- 用户命令 ---
 
-@bot.on_message(filters.regex(r"(magnet:\?xt=urn:btih:[a-zA-Z0-9]+.*|https?://(?:[a-zA-Z0-9-]+\.)?115(?:cdn)?\.com/[^\s]+)") & filters.private)
+@bot.on_message(filters.regex(r"(magnet:\?xt=urn:btih:[a-zA-Z0-9]+.*|ed2k://\|file\|.*|https?://(?:[a-zA-Z0-9-]+\.)?115(?:cdn)?\.com/[^\s]+)") & filters.private)
 async def handle_download_link(_, msg):
-    """自动检测磁力链接和 115 分享链接"""
+    """自动检测磁力链接、ed2k 和 115 分享链接"""
     if not _check_p115_enabled():
         return
 
@@ -120,7 +120,7 @@ async def handle_download_link(_, msg):
         return
 
     source_url = msg.text.strip()
-    is_share = not source_url.lower().startswith("magnet:")
+    is_share = not (source_url.lower().startswith("magnet:") or source_url.lower().startswith("ed2k:"))
 
     # 检查 115 离线配额 (分享链接不需要离线配额)
     if not is_share:

@@ -144,12 +144,20 @@ class P115Manager:
         # 处理 "任务已存在" (错误码 10008)
         if isinstance(resp, dict) and (resp.get("code") == 10008 or resp.get("errcode") == 10008):
             logger.info("任务已存在，尝试从链接中提取 hash")
+            
+            # 尝试提取 Magnet 链接的 hash
             match = re.search(r'urn:btih:([a-zA-Z0-9]+)', url, re.IGNORECASE)
             if match:
                 info_hash = match.group(1).lower()
                 return {"info_hash": info_hash, "name": "已存在的任务(解析中)"}
-            else:
-                raise Exception("任务已存在，但无法从原链接解析 info_hash")
+                
+            # 尝试提取 ed2k 链接的 hash (第4个字段)
+            ed2k_match = re.search(r'ed2k://\|file\|[^|]+\|\d+\|([a-fA-F0-9]+)\|', url, re.IGNORECASE)
+            if ed2k_match:
+                info_hash = ed2k_match.group(1).lower()
+                return {"info_hash": info_hash, "name": "已存在的任务(解析中)"}
+                
+            raise Exception("任务已存在，但无法从原链接解析 info_hash")
 
         # 其他错误
         error_msg = resp.get("message") if isinstance(resp, dict) else "未知错误"
