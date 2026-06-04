@@ -307,16 +307,26 @@ class P115Manager:
             def _list_files():
                 all_files = []
                 logger.info(f"找到目录，准备遍历内部文件，cid={found_item['id']}")
-                for sub_item in tool.iterdir(client, cid=found_item["id"]):
-                    if not (sub_item.get("is_dir") or sub_item.get("is_directory")):
-                        pickcode = sub_item.get("pickcode") or sub_item.get("pick_code", "")
-                        all_files.append({
-                            "file_id": sub_item.get("id", ""),
-                            "pickcode": pickcode,
-                            "name": sub_item.get("name", ""),
-                            "size": sub_item.get("size", 0),
-                            "path": sub_item.get("name", ""),
-                        })
+                
+                def _traverse(cid, current_path=""):
+                    for sub_item in tool.iterdir(client, cid=cid):
+                        item_name = sub_item.get("name", "")
+                        # 构建相对路径（兼容 Windows 和 Linux 的路径拼接）
+                        item_path = f"{current_path}/{item_name}" if current_path else item_name
+                        
+                        if sub_item.get("is_dir") or sub_item.get("is_directory"):
+                            _traverse(sub_item["id"], item_path)
+                        else:
+                            pickcode = sub_item.get("pickcode") or sub_item.get("pick_code", "")
+                            all_files.append({
+                                "file_id": sub_item.get("id", ""),
+                                "pickcode": pickcode,
+                                "name": item_name,
+                                "size": sub_item.get("size", 0),
+                                "path": item_path,
+                            })
+                
+                _traverse(found_item["id"])
                 
                 if not all_files:
                     return []
